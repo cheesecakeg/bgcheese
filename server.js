@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 8080;
 const DATA_DIR = path.join(__dirname, 'data');
 const VAULT_FILE = path.join(DATA_DIR, 'vault.enc');
 const INVITES_FILE = path.join(__dirname, 'invites.json');
-const APP_HTML = path.join(__dirname, '..', 'bgnk4.html');
+const APP_HTML = path.join(__dirname, 'bgnk4.html');
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
