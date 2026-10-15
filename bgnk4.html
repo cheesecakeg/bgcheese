@@ -308,6 +308,10 @@
   }
   .chat-input textarea { flex: 1; min-width: 200px; min-height: 44px; margin: 0; resize: none; }
   .chat-input button { flex-shrink: 0; }
+  .mention {
+    color: var(--logo);
+    font-weight: 700;
+  }
 
   .settings-grid {
     display: grid;
@@ -558,9 +562,13 @@ function simpleTrip(secret) {
   return Math.abs(h).toString(16).padStart(8, '0');
 }
 function renderBody(text) {
-  return esc(text).split('\n').map(line => {
+  return (text || '').split('\n').map(line => {
     if (line.startsWith('>')) return `<span class="quotetext">${esc(line)}</span>`;
-    return esc(line);
+    const withMentions = esc(line).replace(/(^|[^\wäöüÄÖÜß])@([A-Za-z0-9_äöüÄÖÜß-]+(?:\s+[A-Za-z0-9_äöüÄÖÜß-]+)*)/g, (match, prefix, mention) => {
+      const clean = mention.trim();
+      return `${prefix}<span class="mention">@${clean}</span>`;
+    });
+    return withMentions;
   }).join('<br>');
 }
 function readFileAsDataURL(file) {
@@ -688,14 +696,14 @@ function renderBoard() {
     </div>
     ${threads.length ? threads.map(t => `
       <div class="thread" data-thread="${t.id}">
-        <div class="meta"><span class="id">Nr.${t.id.slice(-6)}</span> · ${formatTime(t.created)} · <span class="name">${esc(t.author)}</span>${isAdmin ? ` <button class="danger" data-delete-thread="${t.id}" style="padding:2px 6px;font-size:.7rem;margin-left:auto">Löschen</button>` : ''}</div>
-        <div class="preview">${esc(t.body.slice(0, 120))}${t.body.length > 120 ? '...' : ''}</div>
+        <div class="meta"><span class="id">Nr.${t.id.slice(-6)}</span> · ${formatTime(t.created)} · <span class="name">${esc(t.author)}</span>${isAdmin ? ` <button class="danger" data-delete-thread="${t.id}" style="padding:2px 6px;font-size:.7rem;margin-left:8px">Löschen</button>` : ''}</div>
+        <div class="preview">${renderBody(t.body.slice(0, 120))}${t.body.length > 120 ? '...' : ''}</div>
         <div class="stats">${(t.replies||[]).length} Antworten ${t.image ? ' · Bild' : ''}</div>
       </div>
     `).join('') : '<div class="empty">Noch nix hier. Mach den ersten Thread!</div>'}
     <div id="new-thread-form" class="reply-form hidden">
       <h3 style="margin-bottom:12px">Neuer Thread</h3>
-      <textarea id="nt-body" placeholder="Was geht? (> für Zitat)"></textarea>
+      <textarea id="nt-body" placeholder="Was geht? (> für Zitat) @Name"></textarea>
       <div class="file-row"><input type="file" id="nt-image" accept="image/*"></div>
       <button id="nt-submit">Posten</button>
       <button class="secondary" id="nt-cancel" style="margin-left:8px">Abbrechen</button>
@@ -713,7 +721,7 @@ function renderThread() {
   html += `
     <div class="reply-form">
       <h3 style="margin-bottom:12px">Antworten</h3>
-      <textarea id="reply-body" placeholder="Antwort... (> Zitat)"></textarea>
+      <textarea id="reply-body" placeholder="Antwort... (> Zitat) @Name"></textarea>
       <div class="file-row"><input type="file" id="reply-image" accept="image/*"></div>
       <button id="reply-submit">Antworten</button>
     </div>`;
@@ -742,14 +750,14 @@ function renderChat() {
       <div class="chat-messages" id="chat-msgs">
         ${msgs.length ? msgs.map(m => `
           <div class="chat-msg ${m.author === session.name ? 'mine' : ''}">
-            <div class="who">${esc(m.author)}${m.trip ? esc(m.trip) : ''}<span class="when">${formatTime(m.created)}</span>${isAdmin ? `<button class="danger" data-delete-chat="${m.id}" style="padding:2px 6px;font-size:.7rem;margin-left:auto">Löschen</button>` : ''}</div>
+            <div class="who">${esc(m.author)}${m.trip ? esc(m.trip) : ''}<span class="when">${formatTime(m.created)}</span>${isAdmin ? `<button class="danger" data-delete-chat="${m.id}" style="padding:2px 6px;font-size:.7rem;margin-left:8px">Löschen</button>` : ''}</div>
             ${m.body ? `<div>${renderBody(m.body)}</div>` : ''}
             ${m.image ? `<img src="${m.image}" class="zoom-img" alt="">` : ''}
           </div>
         `).join('') : '<div class="empty">Noch leer. Schreib was!</div>'}
       </div>
       <div class="chat-input">
-        <textarea id="chat-text" placeholder="Nachricht schreiben..."></textarea>
+        <textarea id="chat-text" placeholder="Nachricht schreiben... @Name"></textarea>
         <input type="file" id="chat-image" accept="image/*" style="width:auto;margin:0">
         <button id="chat-send">Senden</button>
       </div>
@@ -807,7 +815,6 @@ function attachEvents() {
     img.onclick = e => { e.stopPropagation(); showImage(img.src); };
   });
 
-  // Admin delete events
   document.getElementById('delete-all-threads')?.addEventListener('click', async () => {
     if (confirm('Wirklich ALLES löschen?')) {
       try {
