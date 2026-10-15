@@ -308,8 +308,12 @@
   }
   .chat-input textarea { flex: 1; min-width: 200px; min-height: 44px; margin: 0; resize: none; }
   .chat-input button { flex-shrink: 0; }
-  .mention {
+  .mention-name {
     color: var(--logo);
+    font-weight: 700;
+  }
+  .at-symbol {
+    color: inherit;
     font-weight: 700;
   }
 
@@ -562,11 +566,11 @@ function simpleTrip(secret) {
   return Math.abs(h).toString(16).padStart(8, '0');
 }
 function renderBody(text) {
+  if (!text || !text.trim()) return '';
   return (text || '').split('\n').map(line => {
     if (line.startsWith('>')) return `<span class="quotetext">${esc(line)}</span>`;
-    const withMentions = esc(line).replace(/(^|[^\wäöüÄÖÜß])@([A-Za-z0-9_äöüÄÖÜß-]+(?:\s+[A-Za-z0-9_äöüÄÖÜß-]+)*)/g, (match, prefix, mention) => {
-      const clean = mention.trim();
-      return `${prefix}<span class="mention">@${clean}</span>`;
+    const withMentions = esc(line).replace(/(^|[^\wäöüÄÖÜß])@([A-Za-z0-9_äöüÄÖÜß-]+)/g, (match, prefix, name) => {
+      return `${prefix}<span class="at-symbol">@</span><span class="mention-name">${name}</span>`;
     });
     return withMentions;
   }).join('<br>');
@@ -696,7 +700,7 @@ function renderBoard() {
     </div>
     ${threads.length ? threads.map(t => `
       <div class="thread" data-thread="${t.id}">
-        <div class="meta"><span class="id">Nr.${t.id.slice(-6)}</span> · ${formatTime(t.created)} · <span class="name">${esc(t.author)}</span>${isAdmin ? ` <button class="danger" data-delete-thread="${t.id}" style="padding:2px 6px;font-size:.7rem;margin-left:8px">Löschen</button>` : ''}</div>
+        <div class="meta"><span class="id">Nr.${t.id.slice(-6)}</span> · ${formatTime(t.created)} · <span class="name">${esc(t.author)}</span>${isAdmin ? ` <button class="danger" data-delete-thread="${t.id}" style="padding:2px 6px;font-size:.7rem">Löschen</button>` : ''}</div>
         <div class="preview">${renderBody(t.body.slice(0, 120))}${t.body.length > 120 ? '...' : ''}</div>
         <div class="stats">${(t.replies||[]).length} Antworten ${t.image ? ' · Bild' : ''}</div>
       </div>
@@ -750,7 +754,7 @@ function renderChat() {
       <div class="chat-messages" id="chat-msgs">
         ${msgs.length ? msgs.map(m => `
           <div class="chat-msg ${m.author === session.name ? 'mine' : ''}">
-            <div class="who">${esc(m.author)}${m.trip ? esc(m.trip) : ''}<span class="when">${formatTime(m.created)}</span>${isAdmin ? `<button class="danger" data-delete-chat="${m.id}" style="padding:2px 6px;font-size:.7rem;margin-left:8px">Löschen</button>` : ''}</div>
+            <div class="who">${esc(m.author)}${m.trip ? esc(m.trip) : ''}<span class="when">${formatTime(m.created)}</span>${isAdmin ? `<button class="danger" data-delete-chat="${m.id}" style="padding:2px 6px;font-size:.7rem;margin-left:auto">Löschen</button>` : ''}</div>
             ${m.body ? `<div>${renderBody(m.body)}</div>` : ''}
             ${m.image ? `<img src="${m.image}" class="zoom-img" alt="">` : ''}
           </div>
@@ -923,8 +927,7 @@ document.getElementById('key-btn').onclick = async () => {
   const err = document.getElementById('key-error');
   if (!code) { err.textContent = 'Bitte Einladungscode eingeben'; err.classList.remove('hidden'); return; }
   if (!serverMode) {
-    err.textContent = 'Bitte über die Website öffnen (nicht als Datei)';
-    err.classList.remove('hidden');
+    err.textContent = 'Bitte über die Website öffnen (nicht als Datei)'; err.classList.remove('hidden');
     return;
   }
   if (!(await validateInvite(code))) {
